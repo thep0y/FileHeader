@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Author: Lime
 # @Date:   2013-10-28 13:39:48
-# @Last Modified by:   Abad Vera
-# @Last Modified time: 2019-09-26 09:53:39
+# @Last Modified time: 2017-08-14 16:48:32
 
 import os
 import sys
@@ -69,23 +68,19 @@ FILE_SUFFIX_MAPPING = {
     "sql": "SQL",
     "tcl": "TCL",
     "txt": "Text",
-    "xml": "XML"
+    "xml": "XML",
 }
 
-HEADER_PREFIX_MAPPING = {
-    "PHP": "<?php\n\n"
-}
+HEADER_PREFIX_MAPPING = {"PHP": "<?php\n\n"}
 
-EXTENSION_EQUIVALENCE = {
-    "blade.php": "html"
-}
+EXTENSION_EQUIVALENCE = {"blade.php": "html"}
 
 LANGUAGE_SYNTAX_MAPPING = {
     'Graphviz': 'DOT',
     'RestructuredText': 'reStructuredText',
     'ShellScript': 'Shell-Unix-Generic',
     'TCL': 'Tcl',
-    'Text': 'Plain text'
+    'Text': 'Plain text',
 }
 
 IS_ST3 = sublime.version() >= '3'
@@ -140,9 +135,16 @@ def plugin_loaded():
 
 
 def getOutputError(cmd):
-    return map(str.strip, subprocess.Popen(
-        cmd, shell=True, universal_newlines=True,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate())
+    return map(
+        str.strip,
+        subprocess.Popen(
+            cmd,
+            shell=True,
+            universal_newlines=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ).communicate(),
+    )
 
 
 def View():
@@ -168,29 +170,32 @@ def get_template_part(syntax_type, part):
 
     template_name = '%s.tmpl' % syntax_type
     tmplate_path = os.path.join(
-        HEADER_PATH if part == 'header' else BODY_PATH, template_name)
+        HEADER_PATH if part == 'header' else BODY_PATH, template_name
+    )
 
     custom_template_path = Settings().get('custom_template_%s_path' % part)
     if custom_template_path:
-        path = os.path.abspath(os.path.expanduser(os.path.expandvars(
-            os.path.join(custom_template_path, template_name))))
+        path = os.path.abspath(
+            os.path.expanduser(
+                os.path.expandvars(os.path.join(custom_template_path, template_name))
+            )
+        )
 
         if os.path.exists(path) and os.path.isfile(path):
             tmplate_path = path
 
     try:
-        with open(tmplate_path, 'rb') as f:
-            contents = f.read().decode('utf-8')
+        with open(tmplate_path, 'r') as f:
+            contents = f.read()
     except:
         contents = ''
     return contents
 
 
 def get_template(syntax_type):
-    return ''.join([
-        get_template_part(syntax_type, part)
-        for part in ['header', 'body']
-    ])
+    return ''.join(
+        [get_template_part(syntax_type, part) for part in ['header', 'body']]
+    )
 
 
 def get_strftime():
@@ -209,43 +214,26 @@ def get_strftime():
     return format
 
 
-def get_user_data_from_git(attr, default=None):
-    '''Get attr of 'user' object from GIT's config'''
+def get_user():
+    '''Get user'''
 
-    if not attr:
-        return default
-
-    value = default
-    prefix = 'cd %s && git ' % get_dir_path()
-
-    output, error = getOutputError(prefix + 'status')
+    user = getpass.getuser()
+    output, error = getOutputError('cd {0} && git status'.format(get_dir_path()))
 
     if not error:
-        output, error = getOutputError(prefix + 'config --get user.%s' % attr)
+        output, error = getOutputError('git config --get user.name')
         if not error and output:
-            value = output
-
-    return value
-
-
-def get_author():
-    '''Get author'''
-
-    return get_user_data_from_git('name', getpass.getuser())
-
-
-def get_email():
-    '''Get email'''
-
-    return get_user_data_from_git('email')
+            user = output
+    return user
 
 
 def get_project_name():
     '''Get project name'''
 
     project_data = Window().project_data()
-    project = os.path.basename(
-        project_data['folders'][0]['path']) if project_data else None
+    project = (
+        os.path.basename(project_data['folders'][0]['path']) if project_data else None
+    )
 
     return project
 
@@ -286,8 +274,7 @@ def get_time(path):
     except:
         pass
     else:
-        c_time, m_time = map(
-            datetime.fromtimestamp, (stat.st_ctime, stat.st_mtime))
+        c_time, m_time = map(datetime.fromtimestamp, (stat.st_ctime, stat.st_mtime))
 
     return c_time, m_time
 
@@ -330,25 +317,25 @@ def get_args(syntax_type, options={}):
     file_name = get_file_name(options.get('path', None))
     file_name_without_extension = get_file_name_without_extension(file_name)
 
-    args.update({
-        'create_time': c_time.strftime(format),
-        'last_modified_time': m_time.strftime(format),
-        'file_name': file_name,
-        'file_name_without_extension': file_name_without_extension,
-        'file_path': file_path
-    })
+    args.update(
+        {
+            'create_time': c_time.strftime(format),
+            'last_modified_time': m_time.strftime(format),
+            'file_name': file_name,
+            'file_name_without_extension': file_name_without_extension,
+            'file_path': file_path,
+            "year": datetime.now().year,
+        }
+    )
 
     if IS_ST3:
         args.update({'project_name': get_project_name()})
 
-    author = get_author()
+    user = get_user()
     if 'author' not in args:
-        args.update({'author': author})
+        args.update({'author': user})
     if 'last_modified_by' not in args:
-        args.update({'last_modified_by': author})
-
-    if 'email' not in args:
-        args.update({'email': get_email()})
+        args.update({'last_modified_by': user})
 
     return args
 
@@ -357,11 +344,13 @@ def render_template(syntax_type, part=None, options={}):
     '''Render the template correspond `syntax_type`'''
 
     from jinja2 import Template
+
     try:
         template = Template(
-            get_template_part(syntax_type, part)
-            if part else get_template(syntax_type))
+            get_template_part(syntax_type, part) if part else get_template(syntax_type)
+        )
         render_string = template.render(get_args(syntax_type, options))
+        print(render_string)
     except:
         render_string = ''
     return render_string
@@ -372,9 +361,11 @@ def get_syntax_type(name):
 
     syntax_type = Settings().get('syntax_when_not_match')
     file_suffix_mapping = merge_defaults_with_settings(
-        FILE_SUFFIX_MAPPING, 'file_suffix_mapping')
+        FILE_SUFFIX_MAPPING, 'file_suffix_mapping'
+    )
     extension_equivalence = merge_defaults_with_settings(
-        EXTENSION_EQUIVALENCE, 'extension_equivalence')
+        EXTENSION_EQUIVALENCE, 'extension_equivalence'
+    )
 
     if name is not None:
         name = name.split('.')
@@ -405,7 +396,8 @@ def get_syntax_file(syntax_type):
         syntax_type = 'C++'
 
     lang2tmL = merge_defaults_with_settings(
-        LANGUAGE_SYNTAX_MAPPING, 'language_syntax_mapping')
+        LANGUAGE_SYNTAX_MAPPING, 'language_syntax_mapping'
+    )
     tmL = lang2tmL.get(syntax_type, syntax_type)
 
     if not '.' in tmL:
@@ -423,7 +415,8 @@ def get_content_index(haystack, needle):
 def get_header_prefix(syntax_type, default=''):
     '''Get the header prefix'''
     header_prefix_mapping = merge_defaults_with_settings(
-        HEADER_PREFIX_MAPPING, 'header_prefix_mapping')
+        HEADER_PREFIX_MAPPING, 'header_prefix_mapping'
+    )
     try:
         return header_prefix_mapping.get(syntax_type, default)
     except KeyError:
@@ -433,8 +426,8 @@ def get_header_prefix(syntax_type, default=''):
 def get_header_content(syntax_type, path=None, file=None):
     '''Get the correctly computed header content'''
     header_prefix = get_header_prefix(syntax_type)
-    content = '' if isinstance(
-        file, str) and header_prefix in file else header_prefix
+    content = '' if isinstance(file, str) and header_prefix in file else header_prefix
+    print(content)
     return content + render_template(syntax_type, 'header', {'path': path})
 
 
@@ -488,8 +481,8 @@ class FileHeaderNewFileCommand(sublime_plugin.WindowCommand):
         header = get_header_content(syntax_type, path)
 
         try:
-            with open(path, 'w+b') as f:
-                f.write(header.encode('utf-8'))
+            with open(path, 'w+') as f:
+                f.write(header)
 
         except Exception as e:
             sublime.error_message(str(e))
@@ -548,8 +541,8 @@ class FileHeaderNewFileCommand(sublime_plugin.WindowCommand):
 
         Window().run_command('hide_panel')
         Window().show_input_panel(
-            'File Name:', '',
-            functools.partial(self.on_done, path), None, None)
+            'File Name:', '', functools.partial(self.on_done, path), None, None
+        )
 
 
 class BackgroundAddHeaderThread(threading.Thread):
@@ -563,15 +556,14 @@ class BackgroundAddHeaderThread(threading.Thread):
         syntax_type = get_syntax_type(self.path)
 
         try:
-            with open(self.path, 'rb') as f:
-                file = f.read().decode('utf-8')
+            with open(self.path, 'r') as f:
+                file = f.read()
 
             if not template_header_exists(file, syntax_type):
-                header_content = get_header_content(
-                    syntax_type, self.path, file)
+                header_content = get_header_content(syntax_type, self.path, file)
                 contents = get_file_content(file, syntax_type, header_content)
-                with open(self.path, 'wb') as f:
-                    f.write(contents.encode('utf-8'))
+                with open(self.path, 'w') as f:
+                    f.write(contents)
 
         except Exception as e:
             sublime.error_message(str(e))
@@ -594,8 +586,7 @@ class AddFileHeaderCommand(sublime_plugin.TextCommand):
         view_content = view.substr(sublime.Region(0, view.size()))
 
         if not template_header_exists(view_content, syntax_type):
-            header_content = get_header_content(
-                syntax_type, path, view_content)
+            header_content = get_header_content(syntax_type, path, view_content)
             header_prefix = get_header_prefix(syntax_type)
             view_index = get_content_index(view_content, header_prefix)
             self.view.insert(edit, view_index, header_content)
@@ -625,27 +616,27 @@ class FileHeaderAddHeaderCommand(sublime_plugin.WindowCommand):
 
         def can_add_to_dir(path):
             return enable_add_to_hidden_dir or (
-                not enable_add_to_hidden_dir and
-                not self.is_hidden(path))
+                not enable_add_to_hidden_dir and not self.is_hidden(path)
+            )
 
         def can_add_to_file(path):
             return enable_add_to_hidden_file or (
-                not enable_add_to_hidden_file and
-                not self.is_hidden(path))
+                not enable_add_to_hidden_file and not self.is_hidden(path)
+            )
 
         if not os.path.exists(path):
             return False
 
         enable_add_to_hidden_dir, enable_add_to_hidden_file = map(
-            Settings().get, (
-                'enable_add_header_to_hidden_dir',
-                'enable_add_header_to_hidden_file'
-            )
+            Settings().get,
+            ('enable_add_header_to_hidden_dir', 'enable_add_header_to_hidden_file'),
         )
 
-        if (os.path.isfile(path) and
-                can_add_to_dir(os.path.dirname(path)) and
-                can_add_to_file(path)):
+        if (
+            os.path.isfile(path)
+            and can_add_to_dir(os.path.dirname(path))
+            and can_add_to_file(path)
+        ):
             return True
 
         elif os.path.isdir(path):
@@ -656,12 +647,15 @@ class FileHeaderAddHeaderCommand(sublime_plugin.WindowCommand):
     def add(self, path):
         '''Add to a file'''
 
-        whether_open_file = Settings().get(
-            'open_file_when_add_header_to_directory')
+        whether_open_file = Settings().get('open_file_when_add_header_to_directory')
         if whether_open_file:
             modified_file = Window().open_file(path)
-            block(modified_file, modified_file.run_command,
-                  'add_file_header', {'path': path, 'part': 'header'})
+            block(
+                modified_file,
+                modified_file.run_command,
+                'add_file_header',
+                {'path': path, 'part': 'header'},
+            )
             block(modified_file, modified_file.show, 0)
         else:
             BackgroundAddHeaderThread(path).start()
@@ -701,7 +695,8 @@ class FileHeaderAddHeaderCommand(sublime_plugin.WindowCommand):
                 pass
 
         show_input_panel_when_add_header = Settings().get(
-            'show_input_panel_when_add_header')
+            'show_input_panel_when_add_header'
+        )
 
         if not show_input_panel_when_add_header:
             self.on_done(initial_text)
@@ -709,8 +704,8 @@ class FileHeaderAddHeaderCommand(sublime_plugin.WindowCommand):
 
         Window().run_command('hide_panel')
         Window().show_input_panel(
-            'Modified File or Directory:',
-            initial_text, self.on_done, None, None)
+            'Modified File or Directory:', initial_text, self.on_done, None, None
+        )
 
 
 class FileHeaderReplaceCommand(sublime_plugin.TextCommand):
@@ -731,9 +726,10 @@ FILE_PATH = 'FILE_PATH'
 class FileHeaderListener(sublime_plugin.EventListener):
     LAST_MODIFIED_BY_REGEX = re.compile('\{\{\s*last_modified_by\s*\}\}')
     LAST_MODIFIED_TIME_REGEX = re.compile('\{\{\s*last_modified_time\s*\}\}')
-    FILE_NAME_REGEX = re.compile('\{\{\s*file_name\s*\}\}')
+    FILE_NAME_REGEX = re.compile('\{\{\s*file_name\s*\}\} \(c\) \{\{year\}\}')
     FILE_NAME_WITHOUT_EXTENSION_REGEX = re.compile(
-        '\{\{\s*file_name_without_extension\s*\}\}')
+        '\{\{\s*file_name_without_extension\s*\}\}'
+    )
     FILE_PATH_REGEX = re.compile('\{\{\s*file_path\s*\}\}')
 
     new_view_id = []
@@ -751,7 +747,7 @@ class FileHeaderListener(sublime_plugin.EventListener):
                 variable = search.group()
                 index = line.find(variable)
 
-                line_head, line_tail = '', line[index + len(variable):]
+                line_head, line_tail = '', line[index + len(variable) :]
                 for i in range(index - 1, -1, -1):
                     if line[i] != ' ':
                         space_start = i + 1
@@ -766,7 +762,7 @@ class FileHeaderListener(sublime_plugin.EventListener):
 
         if line_pattern is not None:
             _ = view.find(line_pattern, 0)
-            if(_ != sublime.Region(-1, -1) and _ is not None):
+            if _ != sublime.Region(-1, -1) and _ is not None:
                 a, b = _.a + space_start, _.b - 1
                 file_name = get_file_name(view.file_name())
 
@@ -775,29 +771,30 @@ class FileHeaderListener(sublime_plugin.EventListener):
                 elif what == LAST_MODIFIED_TIME:
                     strings = datetime.now().strftime(get_strftime())
                 elif what == FILE_NAME:
-                    strings = file_name
+                    strings = file_name + " (c) " + str(datetime.now().year)
                 elif what == FILE_NAME_WITHOUT_EXTENSION:
                     strings = get_file_name_without_extension(file_name)
                 elif what == FILE_PATH:
                     strings = get_file_path(view.file_name())
 
                 strings = '{0}{1}{2}'.format(
-                    ' ' * (index - space_start), strings, line_tail)
+                    ' ' * (index - space_start), strings, line_tail
+                )
+                print(strings)
 
                 region = sublime.Region(int(a), int(b))
                 if view.substr(region) != strings:
                     view.run_command(
-                        'file_header_replace',
-                        {'a': a, 'b': b, 'strings': strings})
+                        'file_header_replace', {'a': a, 'b': b, 'strings': strings}
+                    )
 
     def insert_template(self, view, exists):
         enable_add_template_to_empty_file = Settings().get(
-            'enable_add_template_to_empty_file') and view.settings().get(
-            'enable_add_template_to_empty_file', True)
+            'enable_add_template_to_empty_file'
+        ) and view.settings().get('enable_add_template_to_empty_file', True)
 
         path = view.file_name()
-        condition = (path and enable_add_template_to_empty_file
-                     and view.size() <= 0)
+        condition = path and enable_add_template_to_empty_file and view.size() <= 0
 
         if exists:
             condition = (
@@ -821,7 +818,8 @@ class FileHeaderListener(sublime_plugin.EventListener):
 
     def on_pre_save(self, view):
         enable_add_template_on_save = Settings().get(
-            'enable_add_template_on_save', False)
+            'enable_add_template_on_save', False
+        )
         file_name = view.file_name()
 
         if isinstance(enable_add_template_on_save, str):
@@ -829,8 +827,7 @@ class FileHeaderListener(sublime_plugin.EventListener):
             enable_add_template_on_save = search != None
 
         if enable_add_template_on_save:
-            block(view, view.run_command,
-                  'add_file_header', {'path': file_name})
+            block(view, view.run_command, 'add_file_header', {'path': file_name})
 
         if view.id() in FileHeaderListener.new_view_id:
             if not enable_add_template_on_save:
@@ -845,8 +842,7 @@ class FileHeaderListener(sublime_plugin.EventListener):
     def on_activated(self, view):
         block(view, self.update_automatically, view, FILE_PATH)
         block(view, self.update_automatically, view, FILE_NAME)
-        block(view, self.update_automatically,
-              view, FILE_NAME_WITHOUT_EXTENSION)
+        block(view, self.update_automatically, view, FILE_NAME_WITHOUT_EXTENSION)
 
         settings = view.settings()
         c_time, _ = get_time(view.file_name())
